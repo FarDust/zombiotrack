@@ -1,0 +1,36 @@
+[project]
+name = "zombiotrack"
+version = "0.1.0"
+description = "A tool for tracking and managing zombie outbreaks using advanced data analysis and visualization techniques."
+readme = "README.md"
+authors = [
+    { name = "FarDust", email = "gnfaundez@uc.cl" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.11.1",
+    "rich>=14.0.0",
+    "typer>=0.15.2",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11.2",
+]
+test = [
+    "pytest>=8.3.5",
+    "pytest-cov>=6.1.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["zombiotrack", "zombiotrack.*"]
+
+[project.scripts]
+zombiotrack-cli = "zombiotrack.interfaces.cli._cli:app"
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
