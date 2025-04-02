@@ -4,6 +4,7 @@ from zombiotrack.models.building import Building
 
 InfectionState = dict[tuple[int, int], dict[str, str | int]]
 
+
 class ZombieSimulationState(BaseModel):
     """
     Represents the current state of the zombie simulation, including
@@ -21,7 +22,9 @@ class ZombieSimulationState(BaseModel):
         A log of events for this state, such as movements or clean-ups. Defaults to an empty list.
     """
 
-    turn: int = Field(default=0, ge=0, description="The current turn in the simulation.")
+    turn: int = Field(
+        default=0, ge=0, description="The current turn in the simulation."
+    )
     "The current turn in the simulation."
 
     building: Building = Field(
@@ -66,7 +69,9 @@ class ZombieSimulationState(BaseModel):
                         parts = key.split(",")
                         new_key = (int(parts[0]), int(parts[1]))
                     except Exception as e:
-                        raise ValueError(f"Invalid key format for infected_coords: '{key}'. Expected 'x,y'.") from e
+                        raise ValueError(
+                            f"Invalid key format for infected_coords: '{key}'. Expected 'x,y'."
+                        ) from e
                 else:
                     new_key = key
                 new_mapping[new_key] = value
@@ -82,7 +87,9 @@ class ZombieSimulationState(BaseModel):
                             parts = key.split(",")
                             new_key = (int(parts[0]), int(parts[1]))
                         except Exception as e:
-                            raise ValueError(f"Invalid key format for infection_events_log: '{key}'. Expected 'x,y'.") from e
+                            raise ValueError(
+                                f"Invalid key format for infection_events_log: '{key}'. Expected 'x,y'."
+                            ) from e
                     else:
                         new_key = key
                     new_log[new_key] = value

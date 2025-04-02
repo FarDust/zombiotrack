@@ -25,7 +25,7 @@ class ZombieEnvironment:
     a new, updated state.
     """
 
-    def __init__(self, initial_state: ZombieSimulationState,  stochastic: bool = False):
+    def __init__(self, initial_state: ZombieSimulationState, stochastic: bool = False):
         # Store the current state of the simulation.
         self.state = deepcopy(initial_state)
         # Lookup table: number -> action name, default action (0) is "do_nothing"
@@ -35,11 +35,24 @@ class ZombieEnvironment:
         }
 
         self.stochastic: bool = stochastic
+        self._simulation_initialization()
+
+    def _simulation_initialization(self):
+        """
+        Initialize every message that the simulator needs to send to the models.
+
+        Notes
+        -----
+        As side effect modify the the state directly, so this action isn't idempotent
+        """
+        for (floor, room), attributes in self.state.infected_coords.items():
+            if attributes.get(ZOMBIE_COUNT, 0) >= 0:
+                # Sending messages to the initial sensors triggers
+                self.state.building.floors[floor].rooms[room].sensor.trigger()
 
     def _apply_update(
         self,
         state: ZombieSimulationState,
-        old_state: ZombieSimulationState,
         action: str,
         payload: dict,
     ) -> ZombieSimulationState:
@@ -165,10 +178,10 @@ class ZombieEnvironment:
         bool
             True if the room exists, False otherwise.
         """
-        floor: Floor | None = state.building.floors.get(floor)
-        if floor is None:
+        floor_instance: Floor | None = state.building.floors.get(floor)
+        if floor_instance is None:
             return False
-        return room in floor.rooms
+        return room in floor_instance.rooms
 
     def _check_bounds(
         self, state: ZombieSimulationState, floor: int, room: int
@@ -235,22 +248,25 @@ class ZombieEnvironment:
         new_state = deepcopy(state)
         infection_actions: list[InfectionState] = []
         for floor, room in state.infected_coords:
-            if self._check_infected(new_state, floor, room):
-                room_infection_actions = self._spread_infection_room(new_state, floor, room)
+            if self._check_infected(
+                new_state, floor, room
+            ) and not self._room_is_blocked(new_state, floor, room):
+                room_infection_actions = self._spread_infection_room(
+                    new_state, floor, room
+                )
                 infection_actions.extend(room_infection_actions)
         for infection_action in infection_actions:
             new_state = self._apply_infection_action(new_state, infection_action)
         new_state.infection_events_log += infection_actions
         new_state = self._apply_update(
             state=new_state,
-            old_state=state,
             action="spread_infection",
             payload={
                 "stochastic": self.stochastic,
             },
         )
         return new_state
-    
+
     def _apply_infection_action(
         self, state: ZombieSimulationState, infection_action: InfectionState
     ) -> ZombieSimulationState:
@@ -279,7 +295,9 @@ class ZombieEnvironment:
                         state.building.floors[room[0]].rooms[room[1]].sensor.trigger()
                     if ZOMBIE_COUNT not in state.infected_coords[room]:
                         state.infected_coords[room][ZOMBIE_COUNT] = 0
-                    state.infected_coords[room][ZOMBIE_COUNT] = max(0, state.infected_coords[room].get(ZOMBIE_COUNT, 0) + value)
+                    state.infected_coords[room][ZOMBIE_COUNT] = max(
+                        0, state.infected_coords[room].get(ZOMBIE_COUNT, 0) + value
+                    )
         return state
 
     def _spread_infection_room(
@@ -347,7 +365,9 @@ class ZombieEnvironment:
                 else:
                     continue
             else:
-                strength = max(infection_power // max(len(possible_adjacent_rooms), 1), 1)
+                strength = max(
+                    infection_power // max(len(possible_adjacent_rooms), 1), 1
+                )
                 infection_action = self._infect_room(
                     state,
                     adjacent_room[0],
@@ -358,16 +378,19 @@ class ZombieEnvironment:
             infection_actions.append(infection_action)
 
         # Remove extra zombies from the current room.
-        infection_actions.append({(floor, room): {
-            ZOMBIE_COUNT_DELTA: min(0, infection_power - infection_status),
-        }})
+        infection_actions.append(
+            {
+                (floor, room): {
+                    ZOMBIE_COUNT_DELTA: min(0, infection_power - infection_status),
+                }
+            }
+        )
 
-        
         return infection_actions
 
     def _infect_room(
         self, state: ZombieSimulationState, floor: int, room: int, quantity: int
-    ) -> ZombieSimulationState:
+    ) -> InfectionState:
         """
         Infects a room with zombies.
 
@@ -413,7 +436,8 @@ class ZombieEnvironment:
         """
         new_state = deepcopy(self.state)
         self._assert_bounds(new_state, floor, room)
-        new_state.infected_coords.pop((floor, room), None)
+        deleted = new_state.infected_coords.pop((floor, room), None)
+        print(deleted)
         new_state = self._apply_update(
             new_state,
             "clean_room",
@@ -443,7 +467,7 @@ class ZombieEnvironment:
         """
         new_state = deepcopy(self.state)
         self._assert_bounds(new_state, floor, room)
-        self.state.building.floors[floor].rooms[room].sensor.reset()
+        new_state.building.floors[floor].rooms[room].sensor.reset()
         new_state = self._apply_update(
             new_state,
             "reset_sensor",
@@ -508,7 +532,7 @@ class ZombieEnvironment:
         self.state = deepcopy(new_state)
         return new_state
 
-    def reset_simulation(self) -> ZombieSimulationState:
+    def reset_simulation(self, infected_coords: None | dict) -> ZombieSimulationState:
         """
         Resets the simulation, clearing infections and setting the turn to zero.
 
@@ -523,9 +547,10 @@ class ZombieEnvironment:
                 floors_count=self.state.building.floors_count,
                 rooms_per_floor=self.state.building.rooms_per_floor,
             ),
-            infected_coords={},
-            events_log=[],
+            infected_coords=infected_coords if infected_coords else {},
+            infection_events_log=[],
         )
-        new_state = self._apply_update(new_state, "reset_simulation")
+        new_state = self._apply_update(new_state, "reset_simulation", {})
         self.state = deepcopy(new_state)
+        self._simulation_initialization()
         return new_state

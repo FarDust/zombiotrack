@@ -3,35 +3,61 @@ from rich.table import Table
 from rich.console import Console
 from typer import Option, echo, Typer
 from zombiotrack.interfaces.cli.utils.data_management import load_state
+from zombiotrack.models.state import ZombieSimulationState
 
 visualization_app = Typer(help="Command group for visualization porpouses")
 
+
 def get_color(sensor_status: str, blocked: bool = False) -> str:
     """
-    Determines the style based on the sensor status and zombie count.
-    Uses the sensor status from the room to set the base color.
-    For example, if sensor is "alert", use red; otherwise green.
+    Determine the display style based on sensor status and blocked state.
+
+    If the room is blocked, the style will be blue regardless of the sensor.
+    Otherwise, the style will be bold green for normal sensors and bold red for alert sensors.
+
+    Parameters
+    ----------
+    sensor_status : str
+        The current status of the sensor ("normal" or "alert").
+    blocked : bool, optional
+        Whether the room is blocked. If True, overrides sensor status with blue.
+
+    Returns
+    -------
+    str
+        A style string (e.g., "bold red", "bold green", or "blue") suitable for Rich styling.
     """
     if blocked:
         return "blue"
     base = "green" if sensor_status.lower() != "alert" else "red"
     return f"bold {base}"
 
-@visualization_app.command()
-def grid(
-    session_id: str | None = Option(None, "--session-id", "-s", help="Session ID"),
-    state_file: str | None = Option(None, "--state-file", help="Path to state file")
-):
+
+def render_grid(state: ZombieSimulationState) -> None:
     """
-    Loads the simulation state and displays a grid visualization.
-    Each row represents a floor and each column a room.
-    Each cell shows the zombie count styled according to the room's sensor status
-    and the zombie count.
+    Render the current building state as a colored grid in the console.
+
+    Each row of the grid represents a floor, and each column a room.
+    The zombie count is displayed in each cell, and the color is determined
+    by the sensor status and whether the room is blocked:
+
+    - "alert" → bold red
+    - "normal" → bold green
+    - blocked rooms → blue (with zombie count shown in brackets)
+
+    Parameters
+    ----------
+    state : ZombieSimulationState
+        The current state of the simulation, containing building layout,
+        infection data, and sensor status.
+
+    Returns
+    -------
+    None
+        This function outputs the table directly to the console using Rich.
     """
-    state = load_state(session_id, state_file)
-    # Use model attributes for type-safety:
     building = state.building  # instance of Building
-    floors = building.floors   # assumed to be a list of Floor objects
+    floors = building.floors  # assumed to be a list of Floor objects
     infected = state.infected_coords  # keys are now tuples thanks to the validator
 
     table = Table(title="Zombie Simulation Grid", show_lines=True)
@@ -62,14 +88,61 @@ def grid(
 
     Console().print(table)
 
+
+@visualization_app.command()
+def grid(
+    session_id: str | None = Option(None, "--session-id", "-s", help="Session ID"),
+    state_file: str | None = Option(None, "--state-file", help="Path to state file"),
+):
+    """
+    Display a colored grid visualization of the simulation state.
+
+    Loads the simulation state from a file or session ID and renders
+    a table showing zombie distribution, sensor status, and blocked rooms.
+
+    Parameters
+    ----------
+    session_id : str, optional
+        ID of the session folder to load the simulation state from.
+    state_file : str, optional
+        Path to a custom state file to load. Takes precedence over session_id.
+
+    Returns
+    -------
+    None
+        Outputs the grid to the console using Rich.
+    """
+    state = load_state(session_id, state_file)
+    # Use model attributes for type-safety:
+    render_grid(state)
+
+
 @visualization_app.command()
 def show_state(
     session_id: str | None = Option(None, "--session-id", "-s", help="Session ID"),
     state_file: str | None = Option(None, "--state-file", help="Path to state file"),
-    json_path: str = Option("$", "--json-path", help="Path to a key in the state JSON")
+    json_path: str = Option("$", "--json-path", help="Path to a key in the state JSON"),
 ):
     """
-    Displays the current simulation state.
+    Display the raw simulation state or a specific JSON subpath.
+
+    Loads the current simulation state from file or session ID and prints
+    the full JSON structure or a subset defined by a dot-separated JSON path.
+
+    Parameters
+    ----------
+    session_id : str, optional
+        ID of the session to load the simulation state from.
+    state_file : str, optional
+        Path to a specific state file. Overrides session_id if provided.
+    json_path : str, optional
+        Dot-separated path to a key within the JSON object.
+        Defaults to "$" for the full state.
+
+    Returns
+    -------
+    None
+        Prints the selected portion of the state as formatted JSON.
     """
     state = load_state(session_id, state_file)
     json_state = state.model_dump_json(indent=2)

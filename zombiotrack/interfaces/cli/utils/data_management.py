@@ -19,6 +19,7 @@ def get_state_filepath(session_id: str | None, state_file: str | None) -> Path:
     session_folder.mkdir(exist_ok=True)
     return session_folder / "zombie-simulation-state.json"
 
+
 def load_state(session_id: str | None, state_file: str | None) -> ZombieSimulationState:
     """
     Loads the simulation state from a file. If session_id is provided,
@@ -31,10 +32,13 @@ def load_state(session_id: str | None, state_file: str | None) -> ZombieSimulati
     if not filepath.exists():
         echo(f"State file '{filepath}' does not exist. Please run 'configure' first.")
         raise Exit()
-    
+
     return ZombieSimulationState(**json.loads(filepath.read_text()), strict=True)
 
-def save_state(session_id: str | None, state_file: str | None, state: ZombieSimulationState) -> None:
+
+def save_state(
+    session_id: str | None, state_file: str | None, state: ZombieSimulationState
+) -> None:
     """
     Saves the simulation state to the appropriate file.
     """

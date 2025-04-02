@@ -3,6 +3,9 @@ name = "zombiotrack"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+authors = [
+    { name = "FarDust", email = "gnfaundez@uc.cl" }
+]
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.11.1",
@@ -13,6 +16,10 @@ dependencies = [
 [dependency-groups]
 dev = [
     "ruff>=0.11.2",
+]
+test = [
+    "pytest>=8.3.5",
+    "pytest-cov>=6.1.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -25,5 +32,5 @@ zombiotrack-cli = "zombiotrack.interfaces.cli._cli:app"
 package = true
 
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
