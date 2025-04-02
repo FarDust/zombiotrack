@@ -1,7 +1,7 @@
 [project]
 name = "zombiotrack"
 version = "0.1.0"
-description = "Add your description here"
+description = "A tool for tracking and managing zombie outbreaks using advanced data analysis and visualization techniques."
 readme = "README.md"
 authors = [
     { name = "FarDust", email = "gnfaundez@uc.cl" }
