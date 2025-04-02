@@ -309,7 +309,7 @@ class ZombieEnvironment:
 
         # Check if the room is infected and has zombies.
         if not self._check_infected(state, floor, room):
-            return state
+            return []
 
         # Get the list of adjacent rooms.
         possible_adjacent_rooms: set[tuple[int, int]] = set()
@@ -413,7 +413,7 @@ class ZombieEnvironment:
         """
         new_state = deepcopy(self.state)
         self._assert_bounds(new_state, floor, room)
-        new_state.infected_coords.popitem((floor, room))
+        new_state.infected_coords.pop((floor, room), None)
         new_state = self._apply_update(
             new_state,
             "clean_room",

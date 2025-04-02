@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from zombiotrack.models.building import Building
 
@@ -21,7 +21,7 @@ class ZombieSimulationState(BaseModel):
         A log of events for this state, such as movements or clean-ups. Defaults to an empty list.
     """
 
-    turn: int = Field(0, ge=0, description="The current turn in the simulation.")
+    turn: int = Field(default=0, ge=0, description="The current turn in the simulation.")
     "The current turn in the simulation."
 
     building: Building = Field(
@@ -49,3 +49,43 @@ class ZombieSimulationState(BaseModel):
         description="A log of events for the infection state, such as infections or clean-ups on rooms.",
     )
     "A log of events for the infection state, such as infections or clean-ups on rooms."
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_infected_keys(cls, data: dict) -> dict:
+        """
+        Converts string keys in 'infected_coords' (e.g., "1,2") into tuple keys (1, 2)
+        before validation.
+        """
+        mapping = data.get("infected_coords")
+        if mapping and isinstance(mapping, dict):
+            new_mapping = {}
+            for key, value in mapping.items():
+                if isinstance(key, str):
+                    try:
+                        parts = key.split(",")
+                        new_key = (int(parts[0]), int(parts[1]))
+                    except Exception as e:
+                        raise ValueError(f"Invalid key format for infected_coords: '{key}'. Expected 'x,y'.") from e
+                else:
+                    new_key = key
+                new_mapping[new_key] = value
+            data["infected_coords"] = new_mapping
+        logs = data.get("infection_events_log")
+        if logs and isinstance(logs, list):
+            new_logs = []
+            for log in logs:
+                new_log = {}
+                for key, value in log.items():
+                    if isinstance(key, str):
+                        try:
+                            parts = key.split(",")
+                            new_key = (int(parts[0]), int(parts[1]))
+                        except Exception as e:
+                            raise ValueError(f"Invalid key format for infection_events_log: '{key}'. Expected 'x,y'.") from e
+                    else:
+                        new_key = key
+                    new_log[new_key] = value
+                new_logs.append(new_log)
+            data["infection_events_log"] = new_logs
+        return data

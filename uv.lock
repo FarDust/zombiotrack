@@ -228,9 +228,10 @@ wheels = [
 [[package]]
 name = "zombiotrack"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
+    { name = "rich" },
     { name = "typer" },
 ]
 
@@ -242,6 +243,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pydantic", specifier = ">=2.11.1" },
+    { name = "rich", specifier = ">=14.0.0" },
     { name = "typer", specifier = ">=0.15.2" },
 ]
 
