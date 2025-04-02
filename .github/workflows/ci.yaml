@@ -23,7 +23,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Sync Dependencies
-        run: uv sync --group default --group test
+        run: uv sync --group test
 
       - name: Run Ruff Linter
         uses: astral-sh/ruff-action@v1
